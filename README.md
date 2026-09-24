@@ -1,35 +1,101 @@
-# React + TypeScript + Vite
+# Команда поруч
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Невеликий React-застосунок для перегляду профілів учасників команди. Користувач може вибрати учасника зі списку, переглянути його контактну інформацію та додати або прибрати його з обраного.
 
-Currently, two official plugins are available:
+## Демо
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Відкрити deployed-версію проєкту: [https://hillel-redux.vercel.app/](https://hillel-redux.vercel.app/)
 
-## React Compiler
+## Можливості
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+- список учасників команди з іменем, роллю та ініціалами;
+- вибір активного профілю;
+- відображення детальної інформації про учасника;
+- додавання профілю до обраного та видалення з обраного;
+- адаптивний інтерфейс для desktop і mobile;
+- централізоване керування станом через Redux Toolkit.
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+## Технології
 
-## Expanding the Oxlint configuration
+- React 19;
+- TypeScript;
+- Vite;
+- Redux Toolkit;
+- React Redux;
+- Oxlint.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Як працює стан
 
-```json
+Стан застосунку зберігається в Redux store і має один slice `users`:
+
+```ts
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  users: User[],
+  selectedUserId: number
 }
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Slice розташований у `src/redux/slices/usersSlice.ts` і містить:
+
+- початковий список користувачів;
+- reducer `selectUser` для вибору активного профілю;
+- reducer `toggleFavorite` для зміни статусу обраного профілю;
+- actions, автоматично створені через `createSlice`.
+
+Компоненти не передають дані через props між рівнями:
+
+1. `UserList` читає список користувачів і поточного користувача через `useSelector`.
+2. При натисканні на учасника компонент dispatch-ить action `selectUser`.
+3. `UserProfile` отримує активного користувача з Redux store.
+4. Кнопка обраного dispatch-ить action `toggleFavorite`.
+5. Redux оновлює стан, після чого компоненти автоматично перемальовуються.
+
+Redux store підключений до React у `src/main.tsx` через `Provider`.
+
+## Структура проєкту
+
+```text
+src/
+├── components/
+│   ├── App.tsx              # Основний layout сторінки
+│   ├── UserList.tsx         # Список учасників і вибір профілю
+│   └── UserProfile.tsx      # Деталі активного профілю
+├── redux/
+│   ├── slices/
+│   │   └── usersSlice.ts    # Стан, reducers та actions користувачів
+│   └── store.ts             # Конфігурація Redux store і типи
+├── App.css                  # Стилі компонентів застосунку
+├── index.css                # Глобальні стилі та фон
+└── main.tsx                 # Точка входу і Redux Provider
+```
+
+## Встановлення та запуск
+
+Потрібні Node.js і npm.
+
+```bash
+npm install
+npm run dev
+```
+
+Після запуску development-серверу відкрийте адресу, яку покаже Vite у терміналі, зазвичай `http://localhost:5173`.
+
+## Доступні команди
+
+```bash
+npm run dev      # запуск development-серверу
+npm run build    # перевірка TypeScript і production-збірка
+npm run lint     # перевірка коду Oxlint
+npm run preview  # локальний перегляд production-збірки
+```
+
+## Production-збірка
+
+Для перевірки готовності застосунку до деплою виконайте:
+
+```bash
+npm run build
+npm run preview
+```
+
+Production-файли створюються у директорії `dist/`.
