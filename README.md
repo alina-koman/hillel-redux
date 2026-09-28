@@ -31,42 +31,57 @@
 ```ts
 {
   users: User[],
-  selectedUserId: number
+  selectedUserId: number | null,
+  status: 'idle' | 'loading' | 'succeeded' | 'failed',
+  error: string | null
 }
 ```
 
-Slice розташований у `src/redux/slices/usersSlice.ts` і містить:
+Slice розташований у `src/redux/slices/usersSlice.ts`. `createAsyncThunk` завантажує список із `public/users.json`; `extraReducers` обробляє стани запиту. Синхронні reducers керують вибором і обраним:
 
-- початковий список користувачів;
 - reducer `selectUser` для вибору активного профілю;
 - reducer `toggleFavorite` для зміни статусу обраного профілю;
 - actions, автоматично створені через `createSlice`.
 
+### Завантаження учасників
+
+`App` запускає `fetchUsers` після монтування. Thunk запитує статичний JSON-файл за адресою, що враховує базовий шлях Vite, перевіряє HTTP-відповідь і структуру отриманих даних. Повторний запит не запускається, якщо завантаження вже триває або список уже завантажено; після помилки його можна повторити кнопкою в інтерфейсі.
+
+| `status` | Поведінка інтерфейсу |
+| --- | --- |
+| `idle` | Початковий стан до запуску запиту |
+| `loading` | Показується повідомлення про завантаження |
+| `succeeded` | Показується список і профіль або повідомлення про порожній список |
+| `failed` | Показується помилка та кнопка повторного запиту |
+
+Після успішного завантаження перший учасник стає вибраним. Якщо відповідь сервера неуспішна, JSON невалідний або мережевий запит завершується помилкою, стан переходить у `failed`.
+
 Компоненти не передають дані через props між рівнями:
 
-1. `UserList` читає список користувачів і поточного користувача через `useSelector`.
-2. При натисканні на учасника компонент dispatch-ить action `selectUser`.
-3. `UserProfile` отримує активного користувача з Redux store.
-4. Кнопка обраного dispatch-ить action `toggleFavorite`.
-5. Redux оновлює стан, після чого компоненти автоматично перемальовуються.
+1. `App` запускає `fetchUsers` через `useDispatch` і показує стан завантаження або помилку.
+2. `UserList` читає список і поточного користувача через `useSelector`; вибір учасника dispatch-ить `selectUser`.
+3. `UserProfile` отримує активного користувача з Redux store, а кнопка обраного dispatch-ить `toggleFavorite`.
+4. Redux оновлює стан, після чого компоненти автоматично перемальовуються.
 
 Redux store підключений до React у `src/main.tsx` через `Provider`.
 
 ## Структура проєкту
 
 ```text
-src/
-├── components/
-│   ├── App.tsx              # Основний layout сторінки
-│   ├── UserList.tsx         # Список учасників і вибір профілю
-│   └── UserProfile.tsx      # Деталі активного профілю
-├── redux/
-│   ├── slices/
-│   │   └── usersSlice.ts    # Стан, reducers та actions користувачів
-│   └── store.ts             # Конфігурація Redux store і типи
-├── App.css                  # Стилі компонентів застосунку
-├── index.css                # Глобальні стилі та фон
-└── main.tsx                 # Точка входу і Redux Provider
+├── public/
+│   └── users.json           # Дані учасників для асинхронного завантаження
+└── src/
+    ├── components/
+    │   ├── App.tsx              # Основний layout сторінки
+    │   ├── UserList.tsx         # Список учасників і вибір профілю
+    │   └── UserProfile.tsx      # Деталі активного профілю
+    ├── redux/
+    │   ├── slices/
+    │   │   └── usersSlice.ts    # Стан, reducers та actions користувачів
+    │   └── store.ts             # Конфігурація Redux store і типи
+    ├── App.css                  # Стилі компонентів застосунку
+    ├── index.css                # Глобальні стилі та фон
+    └── main.tsx                 # Точка входу і Redux Provider
 ```
 
 ## Встановлення та запуск
