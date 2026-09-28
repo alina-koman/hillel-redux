@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 export type User = {
   id: number
@@ -14,48 +14,65 @@ export type User = {
 
 export type UsersState = {
   users: User[]
-  selectedUserId: number
+  selectedUserId: number | null
+  status: 'idle' | 'loading' | 'succeeded' | 'failed'
+  error: string | null
 }
 
-const initialUsers: User[] = [
-  {
-    id: 1,
-    name: 'Анна Коваленко',
-    role: 'Frontend developer',
-    email: 'anna@example.com',
-    location: 'Київ, Україна',
-    initials: 'АК',
-    color: '#7c5cff',
-    description: 'Створює зрозумілі інтерфейси та перетворює складні задачі на прості рішення.',
-    isFavorite: true,
+function isUser(value: unknown): value is User {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const user = value as Record<string, unknown>
+
+  return (
+    typeof user.id === 'number' &&
+    typeof user.name === 'string' &&
+    typeof user.role === 'string' &&
+    typeof user.email === 'string' &&
+    typeof user.location === 'string' &&
+    typeof user.initials === 'string' &&
+    typeof user.color === 'string' &&
+    typeof user.description === 'string' &&
+    typeof user.isFavorite === 'boolean'
+  )
+}
+
+export const fetchUsers = createAsyncThunk<
+  User[],
+  void,
+  { state: { users: UsersState }; rejectValue: string }
+>(
+  'users/fetchUsers',
+  async (_, { rejectWithValue }) => {
+    const response = await fetch(`${import.meta.env.BASE_URL}users.json`)
+
+    if (!response.ok) {
+      throw new Error(`Не вдалося завантажити учасників (${response.status}).`)
+    }
+
+    const data: unknown = await response.json()
+
+    if (!Array.isArray(data) || !data.every(isUser)) {
+      return rejectWithValue('Отримано некоректний список учасників.')
+    }
+
+    return data
   },
   {
-    id: 2,
-    name: 'Максим Шевченко',
-    role: 'Product designer',
-    email: 'maksym@example.com',
-    location: 'Львів, Україна',
-    initials: 'МШ',
-    color: '#f06b9a',
-    description: 'Досліджує потреби користувачів і допомагає команді робити продукт кориснішим.',
-    isFavorite: false,
+    condition: (_, { getState }) => {
+      const { status } = getState().users
+      return status !== 'loading' && status !== 'succeeded'
+    },
   },
-  {
-    id: 3,
-    name: 'Софія Мельник',
-    role: 'Project manager',
-    email: 'sofia@example.com',
-    location: 'Одеса, Україна',
-    initials: 'СМ',
-    color: '#2ba88a',
-    description: 'Організовує командну роботу, планує релізи та тримає фокус на результаті.',
-    isFavorite: false,
-  },
-]
+)
 
 const initialState: UsersState = {
-  users: initialUsers,
-  selectedUserId: initialUsers[0].id,
+  users: [],
+  selectedUserId: null,
+  status: 'idle',
+  error: null,
 }
 
 const usersSlice = createSlice({
@@ -72,6 +89,23 @@ const usersSlice = createSlice({
         user.isFavorite = !user.isFavorite
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUsers.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+      })
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        state.users = action.payload
+        state.selectedUserId = action.payload[0]?.id ?? null
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error =
+          action.payload ?? action.error.message ?? 'Не вдалося завантажити учасників.'
+      })
   },
 })
 

@@ -5,8 +5,13 @@ import type { AppDispatch, RootState } from '../redux/store'
 
 function UserProfile() {
   const dispatch = useDispatch<AppDispatch>()
-  const { users, selectedUserId } = useSelector((state: RootState) => state.users)
-  const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0]
+  const selectedUser = useSelector((state: RootState) =>
+    state.users.users.find((user) => user.id === state.users.selectedUserId),
+  )
+
+  if (!selectedUser) {
+    return null
+  }
 
   return (
     <article className="profile-card">
